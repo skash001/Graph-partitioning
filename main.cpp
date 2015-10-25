@@ -44,6 +44,7 @@ void readNetListFile();
 std::list<Cell> split(std::string str,char delimiter);
 void printCellIdToCellMap (/*map<int,Cell> cellIdToCellMap*/);
 void printNetToCellListMap (/*map<int, list<int> > netToCellListMap*/);
+void printGainToCellIdListMap();
 void assignPartition();
 int calculate_FofS(int A);
 int calculate_TofS(int A);
@@ -90,6 +91,7 @@ cout<<"Max area among Cells "<<maxAreaCell<<endl;
 bool isAreaConstraint = checkAreaConstraint();
 cout<< " area constraint is "<<isAreaConstraint<<endl;
 initiateCellMove();
+printCellIdToCellMap();
 
 
 return 0;
@@ -191,7 +193,8 @@ void readAreaFile()
 			//cout<<b[0]<<" "<<endl;
 			cout<<b[1]<<" "<<endl;
 			temp.cellID = cellCount;
-			temp.area = b[1];
+			temp.area = 1;
+			temp.isLocked == false;
 			cellIdToCellMap.insert(pair<int,Cell>(cellCount,temp));
 			cellCount ++;
         }
@@ -237,7 +240,27 @@ void printNetToCellListMap ()
 }   
 
 
+void printGainToCellIdListMap()
+{
+   if(gainToCellIdListMap.empty())
+   {	
+	cout<<"gain bucket empty !!!"<<endl;
+	return;		
+   }
+   cout<<"gain 	Cell list"<<endl;
+  for(map<int,list<int> >::const_reverse_iterator it1 = gainToCellIdListMap.rbegin(); it1 != gainToCellIdListMap.rend(); ++it1)
+  {
+	cout<<it1->first<<"	";
+	for(list<int>::const_iterator it2 = (it1->second).begin(); it2!= (it1->second).end(); ++it2)
+	{
+		cout<<*it2<<" ";
+	}
+	cout<<endl;
+   }
+ 	
 
+
+}
 
 void assignPartition()
 {
@@ -261,18 +284,17 @@ int calculate_FofS(int A)
    for(list<int> ::const_iterator it1 = cellIdToCellMap[A].netList.begin(); it1!=cellIdToCellMap[A].netList.end();++it1)
  	{
 		int FofS_net =0;
-    	for(list<int>::const_iterator it2 = netToCellListMap[*it1].begin(); it2!= netToCellListMap[*it1].end();++it2)
+    		for(list<int>::const_iterator it2 = netToCellListMap[*it1].begin(); it2!= netToCellListMap[*it1].end();++it2)
 			{
-		
 				if(cellIdToCellMap[temp].partition == cellIdToCellMap[*it2].partition)
 				{
 					FofS_net++;
 				}
-			 cout<<"current Cell ID "<<*it2<<" "<< "partition " << cellIdToCellMap[*it2].partition <<endl;						
-			    	
+			 	cout<<"current Cell ID "<<*it2<<" "<< "partition " << cellIdToCellMap[*it2].partition <<endl;						
+			    
 			}
-	   if(FofS_net<=1)
-		      FofS++;
+	   			if(FofS_net<=1)
+			      FofS++;
 	}
    return FofS;
 	
@@ -285,12 +307,12 @@ int calculate_FofS(int A)
 int calculate_TofS(int A)
 {
 	int TofS = 0;
-  	 int temp = A;
+  	int temp = A;
    	for(list<int> ::const_iterator it1 = cellIdToCellMap[A].netList.begin(); it1!=cellIdToCellMap[A].netList.end();++it1)
  		{
 	
     		int TofS_net =0;
-    	for(list<int>::const_iterator it2 = netToCellListMap[*it1].begin(); it2!= netToCellListMap[*it1].end();++it2)
+    		for(list<int>::const_iterator it2 = netToCellListMap[*it1].begin(); it2!= netToCellListMap[*it1].end();++it2)
 			{
 			   	if(cellIdToCellMap[temp].partition != cellIdToCellMap[*it2].partition)
 				{
@@ -299,7 +321,7 @@ int calculate_TofS(int A)
 			//	cout<<"current Cell ID "<<it2->cellID<<" ";//<< "partition " << it2->partition <<endl;						
 			    	
 			}
-	    if(TofS_net==0)
+		    if(TofS_net==0)
 		      TofS++;
 		 }
   				
@@ -332,7 +354,7 @@ int calculateCutsetSize()
 				cutsize++;
 				break;
 		   }
-	   }
+	}
     }
  	return cutsize;
 }   
@@ -342,8 +364,11 @@ int makeGainBucket()
 {
 	int gain =0;
 	gainToCellIdListMap.clear();
+		
 	for(map<int,Cell>::iterator it1 = cellIdToCellMap.begin();it1!= cellIdToCellMap.end(); ++it1)
 	{
+		if((it1->second).getIsLocked() == false)
+		{
 		gain = calculateGain(it1->first);
 		(it1->second).gain = gain;
 	 	map<int, std::list<int> >::iterator finder;
@@ -351,29 +376,16 @@ int makeGainBucket()
 		if(finder==gainToCellIdListMap.end())
 		{
 			list<int> celllist;
+			cout<<"inserting cell "<<it1->first<<" into gain bucket "<<gain<<endl;
 			celllist.push_back(it1->first);
 			gainToCellIdListMap.insert(pair<int,list<int> >(gain,celllist));
 			
 		}
 		else
 		finder->second.push_back(it1->first);
-	}
-	sort(gainVector.begin(), gainVector.end());
-	reverse(gainVector.begin(), gainVector.end());
-	for(vector<int>::iterator it1 = gainVector.begin(); it1!= gainVector.end(); ++it1)
-		cout<< *it1 <<endl;
-
-			cout<<"gain 	Cell list"<<endl;
-    for(map<int,list<int> >::const_reverse_iterator it1 = gainToCellIdListMap.rbegin(); it1 != gainToCellIdListMap.rend(); ++it1)
-		{
-			cout<<it1->first<<"	";
-			for(list<int>::const_iterator it2 = (it1->second).begin(); it2!= (it1->second).end(); ++it2)
-			{
-				cout<<*it2<<" ";
-			}
-			cout<<endl;
 		}
-    
+	}
+	printGainToCellIdListMap();
 
 }
    
@@ -382,9 +394,8 @@ int makeGainBucket()
 int computeAreaofPartition(int partition)
 {
 	int sumArea = 0;
-	for(map<int,Cell>::const_iterator it1 = cellIdToCellMap.begin();
-    it1!= cellIdToCellMap.end(); ++it1)
-    {
+	for(map<int,Cell>::const_iterator it1 = cellIdToCellMap.begin();it1!= cellIdToCellMap.end(); ++it1)
+    	{
 		if(it1->second.partition == partition)
 		{
 			sumArea+=it1->second.area;
@@ -427,20 +438,21 @@ bool checkAreaConstraint()
 
 void initiateCellMove()
 {
-    int initialCutset =	calculateCutsetSize();
+    	int initialCutset = calculateCutsetSize();
 	int cutSet = 0;
 	int counter=0;
 	cout<<"initial Cutset = "<<initialCutset<<endl;
 	int cellId =0;
-	bool setbreak = false;
 	int temp =0;
+	map<int,list<int> >::reverse_iterator it1 = gainToCellIdListMap.rbegin();
 
-    while(counter<numOfCells)
-	 {	 
-		for(map<int,list<int> >::reverse_iterator it1 = gainToCellIdListMap.rbegin(); it1 != gainToCellIdListMap.rend(); ++it1)
+    	 
+		while( it1 != gainToCellIdListMap.rend())
 		{
 			cout<<"for cell of gain "<<it1->first<<endl;
-		    for(list<int>::iterator it2 = (it1->second).begin(); it2!= (it1->second).end(); ++it2)
+			bool setbreak = false;
+			list<int>::iterator it2 = (it1->second).begin();
+		    	while( it2!= (it1->second).end())
 		 		{
 					if(cellIdToCellMap[*it2].getIsLocked()== false)
 						{
@@ -450,25 +462,35 @@ void initiateCellMove()
 							if(checkAreaConstraint() == false)
 							{
 								cellIdToCellMap[*it2].changePartition();
+								cout<<"reverting partition -> area constraint not met" <<endl;
+								++it2;
 								continue;
 							}
-							temp = *it2;
-							cellIdToCellMap[*it2].setIsLocked();
-							counter++;
-               				cutSet =  calculateCutsetSize();
-							cout<<"cutset size after "<< counter <<" move =  "<<cutSet<<endl;
-							setbreak = true;
-							break;
-                       	}
+							else
+							{
+								cellIdToCellMap[*it2].setIsLocked();
+								cout<<"Cell "<<*it2 <<" isLocked" << cellIdToCellMap[*it2].getIsLocked()<<endl;
+								counter++;	
+               							cutSet =  calculateCutsetSize();
+								cout<<"cutset size after "<< counter <<" move =  "<<cutSet<<endl;
+								setbreak = true;
+								break;
+							}
+                       				}
 					
-					cout<<"isLocked "<<cellIdToCellMap[*it2].getIsLocked()<<endl;
+				//	cout<<"isLocked "<<cellIdToCellMap[*it2].getIsLocked()<<endl;
 		  	 	}
 			if(setbreak==true)
-			break;		
+			{
+				makeGainBucket();
+				it1=gainToCellIdListMap.rbegin();
+				//it2 = (it1->second).begin();
+				continue;
+			}	
+			it1++;		
 		}
-	//	updateGainBucket(temp);
-
-	}		
+		
+	
 }
 
 void updateGainBucket(int cellId)
@@ -477,17 +499,19 @@ void updateGainBucket(int cellId)
 	for(list<int> ::iterator it1 = cellIdToCellMap[cellId].netList.begin(); it1!=cellIdToCellMap[cellId].netList.end();++it1)
  	{
 		 
-    	for(list<int>::iterator it2 = netToCellListMap[*it1].begin(); it2!= netToCellListMap[*it1].end();++it2)
-		{ 
+    		for(list<int>::iterator it2 = netToCellListMap[*it1].begin(); it2!= netToCellListMap[*it1].end();++it2)
+		{	
+			
 			for(map<int,list<int> >::reverse_iterator it3 = gainToCellIdListMap.rbegin(); it3 != gainToCellIdListMap.rend(); ++it3)
-		    {	
+		    	{	
 				list<int>::iterator it4 = (it3->second).begin();
 				while(it4 != (it3->second).end())
 		 		{
 					if(*it4 == *it2)
 					{
 						it4 = (it3->second).erase(it4);
-						//continue;
+						cout<<"removing cell from gain list "<< *it2<<endl;
+						continue;
 					} 
 					++it4;
 				}
@@ -506,12 +530,13 @@ void updateGainBucket(int cellId)
 			}
 			else
 			finder->second.push_back(*it2);
+			
 				
 		}
 	}
 	cout<<"updated gain bucket is"<<endl;	
 	cout<<"gain 	Cell list"<<endl;
-    for(map<int,list<int> >::const_reverse_iterator it1 = gainToCellIdListMap.rbegin(); it1 != gainToCellIdListMap.rend(); ++it1)
+    	for(map<int,list<int> >::const_reverse_iterator it1 = gainToCellIdListMap.rbegin(); it1 != gainToCellIdListMap.rend(); ++it1)
 		{
 			cout<<it1->first<<"	";
 			for(list<int>::const_iterator it2 = (it1->second).begin(); it2!= (it1->second).end(); ++it2)
